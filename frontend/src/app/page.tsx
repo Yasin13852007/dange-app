@@ -9,7 +9,17 @@ import {
   toggleSubscription, 
   Subscription 
 } from "@/services/api";
-import { RefreshCw, Trash2, PlusCircle, CreditCard, DollarSign, Pencil, X, Search } from "lucide-react";
+import { 
+  RefreshCw, 
+  Trash2, 
+  PlusCircle, 
+  CreditCard, 
+  DollarSign, 
+  Pencil, 
+  X, 
+  Search,
+  PieChart
+} from "lucide-react";
 
 export default function Dashboard() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -72,7 +82,6 @@ export default function Dashboard() {
     setTitle(sub.title);
     setPrice(sub.price.toString());
     setBillingCycle(sub.billing_cycle);
-    // Format date string to YYYY-MM-DD for the HTML date input
     setNextPaymentDate(sub.next_payment_date ? sub.next_payment_date.split("T")[0] : "");
     setCategory(sub.category || "Entertainment");
   };
@@ -127,13 +136,23 @@ export default function Dashboard() {
     }
   };
 
-  // Calculate total estimated monthly cost
+  // Calculate total estimated monthly cost (active only)
   const totalMonthlyCost = subscriptions.reduce((acc, sub) => {
-    if (sub.billing_cycle.toLowerCase() === "yearly") {
-      return acc + sub.price / 12;
-    }
-    return acc + sub.price;
+    if (!sub.is_active) return acc;
+    const monthlyRate = sub.billing_cycle.toLowerCase() === "yearly" ? sub.price / 12 : sub.price;
+    return acc + monthlyRate;
   }, 0);
+
+  // Group active monthly expenses by category
+  const categoryBreakdown = subscriptions.reduce<Record<string, number>>((acc, sub) => {
+    if (!sub.is_active) return acc;
+    const cat = sub.category?.trim() || "General";
+    const monthlyRate = sub.billing_cycle.toLowerCase() === "yearly" ? sub.price / 12 : sub.price;
+    acc[cat] = (acc[cat] || 0) + monthlyRate;
+    return acc;
+  }, {});
+
+  const sortedCategories = Object.entries(categoryBreakdown).sort((a, b) => b[1] - a[1]);
 
   return (
     <main className="min-h-screen bg-[#090d16] text-slate-100 p-6 md:p-12 font-sans">
@@ -172,7 +191,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl shadow-sm">
             <div className="flex items-center justify-between text-slate-400 mb-2">
-              <span className="text-sm font-medium">Estimated monthly cost</span>
+              <span className="text-sm font-medium">Estimated monthly cost (active)</span>
               <DollarSign className="w-5 h-5 text-cyan-400" />
             </div>
             <div className="text-3xl font-bold tracking-tight">
@@ -186,10 +205,47 @@ export default function Dashboard() {
               <CreditCard className="w-5 h-5 text-indigo-400" />
             </div>
             <div className="text-3xl font-bold tracking-tight">
-              {subscriptions.length}
+              {subscriptions.filter((s) => s.is_active).length}
+              <span className="text-slate-500 text-base font-normal ml-2">/ {subscriptions.length} total</span>
             </div>
           </div>
         </div>
+
+        {/* Category Expense Breakdown */}
+        {sortedCategories.length > 0 && (
+          <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-cyan-400" />
+                <h2 className="text-lg font-semibold">Spending by category</h2>
+              </div>
+              <span className="text-xs text-slate-400">Monthly normalized</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+              {sortedCategories.map(([catName, amount]) => {
+                const percentage = totalMonthlyCost > 0 ? (amount / totalMonthlyCost) * 100 : 0;
+                return (
+                  <div key={catName} className="p-3 bg-slate-950/70 border border-slate-800/80 rounded-xl space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-medium text-slate-200 truncate">{catName}</span>
+                      <span className="font-semibold text-cyan-400">${amount.toFixed(2)}</span>
+                    </div>
+                    <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-cyan-400 to-blue-500 h-full rounded-full transition-all duration-300"
+                        style={{ width: `${percentage.toFixed(0)}%` }}
+                      />
+                    </div>
+                    <div className="text-right text-[11px] text-slate-500">
+                      {percentage.toFixed(1)}% of total
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Main Content Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -375,7 +431,6 @@ export default function Dashboard() {
 
                     {/* Action buttons container */}
                     <div className="flex items-center gap-2">
-                      {/* Edit button */}
                       <button
                         onClick={() => startEditing(sub)}
                         className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-slate-900 rounded-lg border border-transparent hover:border-slate-700 transition"
@@ -384,7 +439,6 @@ export default function Dashboard() {
                         <Pencil className="w-4 h-4" />
                       </button>
 
-                      {/* Toggle status button */}
                       <button
                         onClick={async () => {
                           await toggleSubscription(sub.id);
@@ -399,7 +453,6 @@ export default function Dashboard() {
                         {sub.is_active ? "Active" : "Paused"}
                       </button>
 
-                      {/* Delete button */}
                       <button
                         onClick={() => handleDelete(sub.id)}
                         className="p-2 text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg border border-transparent hover:border-rose-900/50 transition"
