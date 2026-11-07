@@ -89,3 +89,25 @@ export const toggleSubscription = async (id: number): Promise<Subscription> => {
   if (!response.ok) throw new Error("Failed to toggle status");
   return response.json();
 };
+
+/**
+ * Updates an existing subscription by its unique identifier.
+ */
+export async function updateSubscription(
+  id: number,
+  data: SubscriptionCreate
+): Promise<Subscription> {
+  const response = await fetch(`${API_BASE_URL}/subscriptions/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to update subscription: ${response.statusText}`);
+  }
+
+  return response.json();
+}

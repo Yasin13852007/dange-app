@@ -4,23 +4,27 @@ import { useState, useEffect } from "react";
 import { 
   getSubscriptions, 
   createSubscription, 
+  updateSubscription,
   deleteSubscription, 
   toggleSubscription, 
   Subscription 
 } from "@/services/api";
-import { RefreshCw, Trash2, PlusCircle, CreditCard, DollarSign } from "lucide-react";
+import { RefreshCw, Trash2, PlusCircle, CreditCard, DollarSign, Pencil, X } from "lucide-react";
 
 export default function Dashboard() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Form state matching backend schema
+  // Form input state matching backend schema
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [nextPaymentDate, setNextPaymentDate] = useState("");
   const [category, setCategory] = useState("Entertainment");
+
+  // Track the ID of the subscription currently being edited
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const fetchSubs = async () => {
     try {
@@ -28,7 +32,7 @@ export default function Dashboard() {
       const data = await getSubscriptions();
       setSubscriptions(data);
       setError(null);
-    } catch (err: any) {
+    } catch {
       setError("Failed to load subscriptions. Is the backend running?");
     } finally {
       setLoading(false);
@@ -39,39 +43,63 @@ export default function Dashboard() {
     fetchSubs();
   }, []);
 
+  // Populate form with existing subscription data for editing
+  const startEditing = (sub: Subscription) => {
+    setEditingId(sub.id);
+    setTitle(sub.title);
+    setPrice(sub.price.toString());
+    setBillingCycle(sub.billing_cycle);
+    // Format date string to YYYY-MM-DD for the HTML date input
+    setNextPaymentDate(sub.next_payment_date ? sub.next_payment_date.split("T")[0] : "");
+    setCategory(sub.category || "Entertainment");
+  };
+
+  // Reset form fields back to default state
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle("");
+    setPrice("");
+    setBillingCycle("monthly");
+    setNextPaymentDate("");
+    setCategory("Entertainment");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !price || !nextPaymentDate) return;
 
+    const payload = {
+      title,
+      price: parseFloat(price),
+      billing_cycle: billingCycle,
+      next_payment_date: new Date(nextPaymentDate).toISOString(),
+      category,
+      is_active: true,
+    };
+
     try {
       setError(null);
-      await createSubscription({
-        title,
-        price: parseFloat(price),
-        billing_cycle: billingCycle,
-        next_payment_date: new Date(nextPaymentDate).toISOString(),
-        category,
-        is_active: true,
-      });
+      if (editingId !== null) {
+        await updateSubscription(editingId, payload);
+      } else {
+        await createSubscription(payload);
+      }
 
-      // Reset form fields
-      setTitle("");
-      setPrice("");
-      setNextPaymentDate("");
-      setCategory("Entertainment");
-
-      // Refresh list
+      resetForm();
       await fetchSubs();
-    } catch (err: any) {
-      setError("The subscription could not be created. Please try again.");
+    } catch {
+      setError("Failed to save the subscription. Please try again.");
     }
   };
 
   const handleDelete = async (id: number) => {
     try {
       await deleteSubscription(id);
+      if (editingId === id) {
+        resetForm();
+      }
       await fetchSubs();
-    } catch (err) {
+    } catch {
       setError("Failed to delete subscription.");
     }
   };
@@ -143,11 +171,27 @@ export default function Dashboard() {
         {/* Main Content Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Add Subscription Form */}
+          {/* Subscription Form (Create & Edit) */}
           <div className="lg:col-span-1 p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-6 h-fit">
-            <div>
-              <h2 className="text-xl font-semibold">Add subscription</h2>
-              <p className="text-xs text-slate-400 mt-1">Enter the recurring payment details.</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">
+                  {editingId !== null ? "Edit subscription" : "Add subscription"}
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  {editingId !== null ? "Modify recurring payment details." : "Enter recurring payment details."}
+                </p>
+              </div>
+              {editingId !== null && (
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 transition"
+                >
+                  <X className="w-4 h-4" />
+                  Cancel
+                </button>
+              )}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -214,8 +258,17 @@ export default function Dashboard() {
                 type="submit"
                 className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-semibold rounded-xl text-sm transition shadow-lg shadow-cyan-500/20"
               >
-                <PlusCircle className="w-4 h-4" />
-                Add subscription
+                {editingId !== null ? (
+                  <>
+                    <Pencil className="w-4 h-4" />
+                    Save changes
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="w-4 h-4" />
+                    Add subscription
+                  </>
+                )}
               </button>
             </form>
           </div>
@@ -254,11 +307,20 @@ export default function Dashboard() {
 
                     {/* Action buttons container */}
                     <div className="flex items-center gap-2">
+                      {/* Edit button */}
+                      <button
+                        onClick={() => startEditing(sub)}
+                        className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-slate-900 rounded-lg border border-transparent hover:border-slate-700 transition"
+                        title="Edit subscription"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+
                       {/* Toggle status button */}
                       <button
                         onClick={async () => {
                           await toggleSubscription(sub.id);
-                          await fetchSubs(); // Refresh data to update UI
+                          await fetchSubs();
                         }}
                         className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
                           sub.is_active 

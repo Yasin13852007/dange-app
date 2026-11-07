@@ -33,3 +33,23 @@ def delete_subscription(db: Session, subscription_id: int) -> Optional[models.Su
         db.delete(db_subscription)
         db.commit()
     return db_subscription
+
+def update_subscription(
+    db: Session, 
+    subscription_id: int, 
+    subscription_update: schemas.SubscriptionCreate
+) -> Optional[models.Subscription]:
+    """
+    Update an existing subscription with new values.
+    """
+    db_subscription = get_subscription_by_id(db, subscription_id)
+    if not db_subscription:
+        return None
+
+    # Update subscription attributes with provided data
+    for key, value in subscription_update.model_dump().items():
+        setattr(db_subscription, key, value)
+
+    db.commit()
+    db.refresh(db_subscription)
+    return db_subscription

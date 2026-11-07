@@ -121,3 +121,28 @@ def toggle_subscription(subscription_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_sub)
     return db_sub
+
+@app.put(
+    "/subscriptions/{subscription_id}",
+    response_model=schemas.SubscriptionResponse,
+    tags=["Subscriptions"]
+)
+def update_subscription(
+    subscription_id: int,
+    subscription: schemas.SubscriptionCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Update an existing subscription by ID.
+    """
+    updated_subscription = crud.update_subscription(
+        db=db,
+        subscription_id=subscription_id,
+        subscription_update=subscription
+    )
+    if updated_subscription is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Subscription not found"
+        )
+    return updated_subscription
