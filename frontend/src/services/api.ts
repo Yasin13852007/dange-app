@@ -78,3 +78,14 @@ export async function deleteSubscription(id: number): Promise<void> {
     throw new Error(`Failed to delete subscription: ${response.statusText}`);
   }
 }
+
+/** Update the active status of a subscription on the server. */
+export const toggleSubscription = async (id: number): Promise<Subscription> => {
+  const response = await fetch(`${API_BASE_URL}/subscriptions/${id}/toggle`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!response.ok) throw new Error("Failed to toggle status");
+  return response.json();
+};

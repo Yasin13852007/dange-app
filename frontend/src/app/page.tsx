@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getSubscriptions, createSubscription, deleteSubscription, Subscription } from "@/services/api";
+import { 
+  getSubscriptions, 
+  createSubscription, 
+  deleteSubscription, 
+  toggleSubscription, 
+  Subscription 
+} from "@/services/api";
 import { RefreshCw, Trash2, PlusCircle, CreditCard, DollarSign } from "lucide-react";
 
 export default function Dashboard() {
@@ -246,13 +252,32 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleDelete(sub.id)}
-                      className="p-2 text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg border border-transparent hover:border-rose-900/50 transition"
-                      title="Delete subscription"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {/* Action buttons container */}
+                    <div className="flex items-center gap-2">
+                      {/* Toggle status button */}
+                      <button
+                        onClick={async () => {
+                          await toggleSubscription(sub.id);
+                          await fetchSubs(); // Refresh data to update UI
+                        }}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
+                          sub.is_active 
+                            ? "bg-emerald-950/30 border-emerald-800 text-emerald-400 hover:bg-emerald-950/50" 
+                            : "bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300"
+                        }`}
+                      >
+                        {sub.is_active ? "Active" : "Paused"}
+                      </button>
+
+                      {/* Delete button */}
+                      <button
+                        onClick={() => handleDelete(sub.id)}
+                        className="p-2 text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg border border-transparent hover:border-rose-900/50 transition"
+                        title="Delete subscription"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
