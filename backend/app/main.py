@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -13,6 +14,20 @@ app = FastAPI(
     title="Dange API",
     description="Backend API for Dange subscription and recurring expense manager",
     version="0.1.0"
+)
+
+# Configure Cross-Origin Resource Sharing (CORS) to allow frontend communication
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/", tags=["Health"])
