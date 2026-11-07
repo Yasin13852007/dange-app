@@ -21,6 +21,19 @@ import {
   PieChart
 } from "lucide-react";
 
+// Helper to calculate days remaining
+const getDaysRemaining = (dateString: string) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const nextDate = new Date(dateString);
+  nextDate.setHours(0, 0, 0, 0);
+
+  const diffTime = nextDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  return diffDays;
+};
+
 export default function Dashboard() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -424,8 +437,18 @@ export default function Dashboard() {
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-slate-400">
-                        ${sub.price.toFixed(2)} / {sub.billing_cycle} {sub.next_payment_date ? `• Next: ${new Date(sub.next_payment_date).toLocaleDateString()}` : ""}
+                      <div className="flex items-center gap-3 text-xs text-slate-400">
+                        <span>${sub.price.toFixed(2)} / {sub.billing_cycle}</span>
+                        {(() => {
+                          const days = getDaysRemaining(sub.next_payment_date);
+                          const isOverdue = days < 0;
+                          const isToday = days === 0;
+                          return (
+                            <span className={`px-2 py-0.5 rounded-full font-medium ${isOverdue ? "bg-rose-950/50 text-rose-400 border border-rose-900/50" : isToday ? "bg-amber-950/50 text-amber-400 border border-amber-900/50" : "bg-slate-800 text-slate-400"}`}>
+                              {isOverdue ? "Overdue" : isToday ? "Due today" : `${days} days left`}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -466,9 +489,7 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-
         </div>
-
       </div>
     </main>
   );
