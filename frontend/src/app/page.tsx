@@ -9,7 +9,7 @@ import {
   toggleSubscription, 
   Subscription 
 } from "@/services/api";
-import { RefreshCw, Trash2, PlusCircle, CreditCard, DollarSign, Pencil, X } from "lucide-react";
+import { RefreshCw, Trash2, PlusCircle, CreditCard, DollarSign, Pencil, X, Search } from "lucide-react";
 
 export default function Dashboard() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -25,6 +25,29 @@ export default function Dashboard() {
 
   // Track the ID of the subscription currently being edited
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  // Search and Category Filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  const categories = Array.from(
+    new Set(
+      subscriptions
+        .map((sub) => sub.category?.trim())
+        .filter((category): category is string => Boolean(category))
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const filteredSubscriptions = subscriptions.filter((sub) => {
+    const matchesSearch = sub.title
+      .toLowerCase()
+      .includes(searchQuery.trim().toLowerCase());
+    const matchesCategory =
+      !selectedCategory ||
+      sub.category?.trim().toLowerCase() === selectedCategory.toLowerCase();
+
+    return matchesSearch && matchesCategory;
+  });
 
   const fetchSubs = async () => {
     try {
@@ -275,18 +298,63 @@ export default function Dashboard() {
 
           {/* Subscriptions List */}
           <div className="lg:col-span-2 p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold">Your subscriptions</h2>
-              <p className="text-xs text-slate-400 mt-1">Review and manage your recurring payments.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold">Your subscriptions</h2>
+                <p className="text-xs text-slate-400 mt-1">Review and manage your recurring payments.</p>
+              </div>
+
+              {/* Category Filter Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory("")}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+                    selectedCategory === ""
+                      ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
+                      : "bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200"
+                  }`}
+                >
+                  All
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition ${
+                      selectedCategory === cat
+                        ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
+                        : "bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {subscriptions.length === 0 ? (
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search subscriptions by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
+              />
+            </div>
+
+            {filteredSubscriptions.length === 0 ? (
               <div className="text-center py-12 text-slate-500 text-sm border border-dashed border-slate-800 rounded-xl">
-                No active subscriptions found. Add your first one using the form.
+                {subscriptions.length === 0
+                  ? "No active subscriptions found. Add your first one using the form."
+                  : "No subscriptions match your search or filter criteria."}
               </div>
             ) : (
               <div className="space-y-3">
-                {subscriptions.map((sub) => (
+                {filteredSubscriptions.map((sub) => (
                   <div
                     key={sub.id}
                     className="flex items-center justify-between p-4 bg-slate-950/60 border border-slate-800/80 rounded-xl hover:border-slate-700 transition"
